@@ -1,5 +1,6 @@
 const Binance = require('binance-api-node').default;
 var fs = require('fs');
+const AWS = require('aws-sdk');
 const kafka = require('kafka-node'); 
 const config = require('./config.json');
 const snowflake = require('./snowflakeWrapper.js');
@@ -8,33 +9,35 @@ var dbConn = null;
 const WebSocket = require('ws');
 const ws = new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@trade');
 
+console.log(config.kinesis);
+
+var kinesis = new AWS.Kinesis(config.kinesis);
 
 
+var trx = [];
 
-//Consumer = kafka.Consumer;
-client = new kafka.KafkaClient({kafkaHost: '35.225.38.201:9092'});
-//consumer = new Consumer( client, [{ topic: 'TutorialTopic'}], {autoCommit: false} );
+ws.on('message', function incoming(trades) {
+    var trade = JSON.parse(trades);
+    trx.push(trade.p);
+    console.log( sma(trx, 100) );
 
-//consumer.on('message', function (message) {
-//    console.log(message);
-//});
+    kinesis.putRecord({
+        Data: trades,
+        StreamName: 'crypto-btc-stream',
+        PartitionKey: 'partition - 1'
 
-
-
-
-HighLevelProducer = kafka.HighLevelProducer;
-producer = new HighLevelProducer(client);
-
-producer.on('ready', function () {
-    ws.on('message', function incoming(trades) {
-        var payloads = [{topic: 'btcusdt', messages: trades } ];
-        producer.send(payloads, function (err, data) {
-            console.log(data);
-        });
-        //console.log(trades);
+    }, function(err, data) {
+        console.log(data);
+        if (err) {
+            console.error(err);
+        }
     });
 
+
+
 });
+
+
 
 /*
 //WEBSOCKET

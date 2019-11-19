@@ -4,7 +4,14 @@
         "username":"SNOWMAN",
         "password":"BlueLeat458",
         "warehouse":"SNOWSTORE_WH"
+    },
+
+    "kinesis":{
+        "region": "us-east-1",
+        "apiVersion": "2013-12-02"
+
     }
+    
 }
 
 
