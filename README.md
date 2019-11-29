@@ -3,13 +3,15 @@ This demo collects real time Bitcoin-USD pair trades from Binance API (https://g
 
 This demo consists of the following puzzle pieces 
 
-<b>Virtual Maching with Node Code</b> The demo runs on node-js to connect and collect data from Bitcoin streaming API. Once messages come through the websocket they are then sent to AWS Kinesis. Essentially the stream flows from the source to an S3 bucket for <i>Snowpipe</i> to ingest later.
+<b>Node-js</b> The demo runs on node-js on a VM to connect and collect data from Bitcoin streaming API. Once messages come through the websocket they are then sent to AWS Kinesis. Essentially the stream flows from the source to an S3 bucket for <i>Snowpipe</i> to ingest.
 
-<b>API Data Gathering through AWSKinesis</b> Data is streaming from Bitcoin API then each message is sent through node-js to AWS Kinesis one by one. Every 5mbs or 300 seconds, which ever comes first, the data is saved to S3.
+<b>AWS Kinesis</b> Data from node-js to AWS Kinesis one message at a time. Every 5mbs or 300 seconds, which ever comes first, then data is saved to S3. 
 
-<b>Snowpipe</b> Once the data hits the S3 bucket Snowpipe ingests this dataset into Snowflake.
+<b>Snowpipe</b> Once the data hits the S3 bucket Snowpipe ingests this dataset into Snowflake. On average this happens every two seconds. This depends on when the SQS message alerts Snowflake that new data is ready to be ingested.
 
-<b>Snowflake</b> Snowflake ingests and houses all data that will later be ready for processing
+<b>Snowflake</b> Snowflake ingests and houses all data that will later be ready for processing.
+
+![img](https://github.com/mariusndini/img/blob/master/cryptopath.png)
 
 
 ## Raw Data Values
@@ -31,7 +33,7 @@ Below is a list of the values we are getting from the API. This data is incoming
 (Courtesy of https://github.com/binance-exchange/binance-official-api-docs/blob/master/web-socket-streams.md#trade-streams)
 ```
 
-The data above comes in JSON format and we use the query below to convert the data into rows & columns for easier SQL processing.
+The data above comes in JSON format and we use the view & query below to convert the data into rows & columns for easier processing.
 
 ```
 create or replace view trades as
@@ -47,17 +49,13 @@ create or replace view trades as
   , TRADES:trade.t AS TRADE_ID
   , to_timestamp_ntz((TRADES:trade.E/1000)::INTEGER) as EVENT_TIME
   , to_timestamp_ntz((TRADES:trade.T/1000)::INTEGER) as TRADE_TIME
-  , TRADES:avgs.head AS HEADER
-  , TRADES:avgs.trail AS TRAILER
-  , TRADES:avgs.diff as nodeDiff
 
   from CRYPTOTRADES
-  order by TRADE_TIME desc
-;
+  order by TRADE_TIME desc ;
 ```
 
 ## Candle Stick Charts
-We can take the data above and do some further processing and aggregation on it to get candle stick charts.
+We can take the data above and do some additional processing and aggregation to get candle stick charts off the raw data above. We can also define the time frame for which we want the candle stick. The logic below is straight forward. <b>open</b> is the value of the price at the start of the timeframe. <b>high</b> is the max price during a time frame and <b>low</b> is the minimum. Finally the <b>close</b> is the last value in the time frame. 
 
 ```
 select distinct date_trunc("minutes", trade_time) as TIME
@@ -67,9 +65,17 @@ select distinct date_trunc("minutes", trade_time) as TIME
 , first_value(price) over (partition by TIME order by trade_time, trade_id DESC) as CLOSE
 
 from trades
-order by 1 desc;
-
+order by 1 desc ;
 ```
+
+
+
+
+    
+
+
+
+
 
 
 
