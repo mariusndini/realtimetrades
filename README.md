@@ -69,9 +69,14 @@ order by 1 desc ;
 ```
 
 ### Data in Candle Sticks
-Each candle stick represents a particular time frames (minute, hour, day etc) worth of data about a security. The information is the <b>open price</b> which is the first trade purchase of the security and the <b>close price</b> being last trade value.
+Each candle stick represents a particular time frames (minute, hour, day etc) worth of data about an asset. The information is the <b>open price</b> which is the first trade purchase of the asset and the <b>close price</b> being last trade value. 
+
+These two numbers make the <b>trade body</b> and if the close price is higher then the open price the candle stick is positive meaning the asset was more valuable at close time then it was at open time and vice versa is true. 
+
+The two other numbers are the <b>high</b> and <b>low</b> being the maximum value and lowest value someone purchased this asset for during that time frame.
 
 ![img](https://github.com/mariusndini/img/blob/master/bearish_bullish_candlesticks.png)
+
 
 
 
