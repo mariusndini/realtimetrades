@@ -55,7 +55,7 @@ create or replace view trades as
 ```
 
 ## Candle Stick Charts
-We can take the data above and do some additional processing and aggregation to get candle stick charts off the raw data above. We can also define the time frame for which we want the candle stick. The logic below is straight forward. <b>open</b> is the value of the price at the start of the timeframe. <b>high</b> is the max price during a time frame and <b>low</b> is the minimum. Finally the <b>close</b> is the last value in the time frame. 
+We can take the data above and do some additional processing and aggregation to get candle stick charts off the raw data above. We can also define the time frame for which we want the candle stick. The logic below is straight forward since <b>open</b> is the value of the price at the start of the timeframe. <b>high</b> is the max price during a particular time frame and <b>low</b> is the minimum. Finally the <b>close</b> is the last value of the time frame. 
 
 ```
 select distinct date_trunc("minutes", trade_time) as TIME
@@ -67,6 +67,13 @@ select distinct date_trunc("minutes", trade_time) as TIME
 from trades
 order by 1 desc ;
 ```
+
+### Data in Candle Sticks
+Each candle stick represents a particular time frames (minute, hour, day etc) worth of data about a security. The information is the <b>open price</b> which is the first trade purchase of the security and the <b>close price</b> being last trade value.
+
+![img](https://github.com/mariusndini/img/blob/master/bearish_bullish_candlesticks.png)
+
+
 
 
 
