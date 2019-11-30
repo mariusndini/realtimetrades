@@ -77,6 +77,19 @@ The two other numbers are the <b>high</b> and <b>low</b> being the maximum value
 
 ![img](https://github.com/mariusndini/img/blob/master/bearish_bullish_candlesticks.png)
 
+## Bitcoin Candles
+We can graph data points of our Bitcoin price chart from the view in a google sheet to better see what is happening (https://docs.google.com/spreadsheets/d/11KEiHFvYb61668XHOUCdcPDpIAiuvFjlLk4YazRJc2k/edit#gid=0)
+
+A quick chart shows the data below. Although not live data it would not be challenging to create a report which would be fed with live data from Snowflake database. The caveat being there will be a 5 to 10 minute in the trade times. 
+
+![img](https://github.com/mariusndini/img/blob/master/BTC_Candles.png)
+
+### What can we do with this data? 
+
+
+
+
+
 
 
 
