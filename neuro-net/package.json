@@ -1,0 +1,17 @@
+{
+  "name": "cryptoapi",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "aws-sdk": "^2.574.0",
+    "brain.js": "^2.0.0-alpha.9",
+    "save-svg-as-png": "^1.4.14",
+    "snowflake-sdk": "^1.1.12"
+  }
+}

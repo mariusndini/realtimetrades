@@ -84,7 +84,111 @@ A quick chart shows the data below. Although not live data it would not be chall
 
 ![img](https://github.com/mariusndini/img/blob/master/BTC_Candles.png)
 
-### What can we do with this data? 
+# About This Data
+This data set is streamed in real-time as trades are happening on the trading platform. The through put is lagged by two bottle necks. One AWS Kinesis which is currently set to batch every 300 seconds or 5mbs (which ever comes first). Since the data set is relatively small in size it will almost always wait 300 seconds (5 minutes). The second is Snowpipe which will wait until AWS SQS will send a message to Snowflake to ingest the data and this is on average about 120 seconds but usually less.
+
+Providing some context around this data set every second there could be 1 to 20 trades given the traffic. Every hour there could be any where between ~10k and ~20k trades on this particular crypto-pair. The table below highlights trading volumes for the a particular day.
+<table class="table table-bordered table-hover table-condensed">
+<thead><tr><th title="Field #1">Time</th>
+<th title="Field #2">Trades</th>
+</tr></thead>
+<tbody><tr>
+<td>12/2/2019  8:00:00 PM</td>
+<td align="right">11715</td>
+</tr>
+<tr>
+<td>12/2/2019  7:00:00 PM</td>
+<td align="right">8587</td>
+</tr>
+<tr>
+<td>12/2/2019  6:00:00 PM</td>
+<td align="right">9330</td>
+</tr>
+<tr>
+<td>12/2/2019  5:00:00 PM</td>
+<td align="right">12641</td>
+</tr>
+<tr>
+<td>12/2/2019  4:00:00 PM</td>
+<td align="right">12736</td>
+</tr>
+<tr>
+<td>12/2/2019  3:00:00 PM</td>
+<td align="right">14204</td>
+</tr>
+<tr>
+<td>12/2/2019  2:00:00 PM</td>
+<td align="right">21142</td>
+</tr>
+<tr>
+<td>12/2/2019  1:00:00 PM</td>
+<td align="right">10346</td>
+</tr>
+<tr>
+<td>12/2/2019  12:00:00 PM</td>
+<td align="right">15830</td>
+</tr>
+<tr>
+<td>12/2/2019  11:00:00 AM</td>
+<td align="right">11543</td>
+</tr>
+<tr>
+<td>12/2/2019  10:00:00 AM</td>
+<td align="right">19343</td>
+</tr>
+<tr>
+<td>12/2/2019  9:00:00 AM</td>
+<td align="right">18643</td>
+</tr>
+<tr>
+<td>12/2/2019  8:00:00 AM</td>
+<td align="right">15124</td>
+</tr>
+<tr>
+<td>12/2/2019  7:00:00 AM</td>
+<td align="right">12697</td>
+</tr>
+<tr>
+<td>12/2/2019  6:00:00 AM</td>
+<td align="right">30403</td>
+</tr>
+<tr>
+<td>12/2/2019  5:00:00 AM</td>
+<td align="right">17256</td>
+</tr>
+<tr>
+<td>12/2/2019  4:00:00 AM</td>
+<td align="right">13160</td>
+</tr>
+<tr>
+<td>12/2/2019  3:00:00 AM</td>
+<td align="right">10947</td>
+</tr>
+<tr>
+<td>12/2/2019  2:00:00 AM</td>
+<td align="right">9346</td>
+</tr>
+<tr>
+<td>12/2/2019  1:00:00 AM</td>
+<td align="right">10648</td>
+</tr>
+<tr>
+<td>12/2/2019  12:00:00 AM</td>
+<td align="right">12375</td>
+</tr>
+<tr>
+<td>12/1/2019  11:00:00 PM</td>
+<td align="right">14081</td>
+</tr>
+<tr>
+<td>12/1/2019  10:00:00 PM</td>
+<td align="right">17254</td>
+</tr>
+<tr>
+<td>12/1/2019  9:00:00 PM</td>
+<td align="right">14893</td>
+</tr>
+</tbody></table>
 
 
 
