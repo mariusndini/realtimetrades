@@ -3,7 +3,7 @@ This demo collects real time Bitcoin-USD pair trades from Binance API (https://g
 
 This demo consists of the following pieces 
 
-<b>API Data Collector</b> node-js on a VM to connect and collect data from Bitcoin streaming API. Once messages come through the websocket they are routed to AWS Kinesis. Essentially the stream flows from the source to an S3 bucket for <i>Snowpipe</i> to ingest.
+<b>API Stream Collector</b> node-js on a VM to connect and collect data from Bitcoin streaming API. Once messages come through the websocket they are routed to AWS Kinesis. Essentially the stream flows from the source to an S3 bucket for <i>Snowpipe</i> to ingest.
 
 <b>AWS Kinesis</b> Data from node-js to AWS Kinesis one message at a time. Every 5mbs or 300 seconds, which ever comes first, then data is saved to S3. 
 
@@ -17,7 +17,7 @@ This data set is streamed in real-time as trades are happening on the trading pl
 
 
 ## Raw Data Values
-Below is a list of the values we are getting from the API. This data is incoming in real time as trades occur on the exchange. The values of relevence to us are <b>price (p)</b> since this will be the value we are buying and selling this asset. We also care about tracking when this asset was trade so <b>trade time is important (T)</b>, trade id is also important since we may have 2 or 3 trades within any given second <b>trade_id</b> will give us the correct order
+Below is a list of the values from the API. Data is incoming in real time as trades occur on the exchange. The values of relevence are <b>price (p)</b> since this will be the value we are buying and selling this asset. We also care about tracking when this asset was trade so <b>trade time is important (T)</b>, trade id is also important since we may have 2 or 3 trades within any given second <b>trade_id</b> will give us the correct order
 ```
 {
   "e": "trade",     // Event type
@@ -35,7 +35,7 @@ Below is a list of the values we are getting from the API. This data is incoming
 (https://github.com/binance-exchange/binance-official-api-docs/blob/master/web-socket-streams.md#trade-streams)
 ```
 
-The data above comes in JSON format and we use the view & query below to convert the data into rows & columns for easier processing.
+The data above comes in JSON format and we use the view query below to convert the data into rows & columns for easier processing.
 
 ```
 create or replace view trades as
@@ -212,12 +212,29 @@ will be profitable? Hard to say
 ```
 
 ## Algo
-We will train a machine learning algorithm to see to, potentially, accurately enough predict future values. Machine learning is a deep topic in computer science and beyond the scope of this particular demo. What we will cover is high level proof of concept in the over all big picture.
+We will train a machine learning algorithm to, potentially, accurately enough predict future values. Machine learning is a deep topic in computer science and beyond the scope of this particular demo. What we will cover is high level proof of concept in the over all big picture.
 
-As this demo is 100% javascript & node.js we will use brain.js (easier to use over Tensorflow.js). The algorithm is a LSTM model (https://en.wikipedia.org/wiki/Long_short-term_memory) because it excels at processing time-series data. This same method exists in Python (https://towardsdatascience.com/predicting-stock-price-with-lstm-13af86a74944) and possibly other languages.  
+As this demo is 100% javascript & node.js we will use brain.js (user friendly over Tensorflow.js). The algorithm is a LSTM model (https://en.wikipedia.org/wiki/Long_short-term_memory) because it excels at processing time-series data. This same method exists in Python (https://towardsdatascience.com/predicting-stock-price-with-lstm-13af86a74944) and possibly other languages.  
 
 
-### Snowflake Data for Training
+## Snowflake Data for Training
+Within our node.js code select data from snowflake. 
+
+Save model graph & trained model to snowflake (JSON & small format).
+
+### Predicting w/ Trained Model
+Use trained model to make predictions
+
+Save predictions to Snowflake
+
+Over time compare predictions to real results
+
+Come to conclusion whether model was profitable or unprofitable
+
+```
+if profitable make money 
+if unprofitable0 --> Train again --> Until profitable
+```
 
 
 
