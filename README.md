@@ -1,23 +1,23 @@
 # Real Time Trades (Bitcoin - USD pair)
-This demo collects real time Bitcoin-USD pair trades from Binance API (https://github.com/binance-exchange/binance-official-api-docs/blob/master/web-socket-streams.md#trade-streams). This stream is available to anyone interested in collecting this information. This information is made available through a HTTP web-socket. 
+This demo collects real time Bitcoin-USD pair trades from Binance API (https://github.com/binance-exchange/binance-official-api-docs/blob/master/web-socket-streams.md#trade-streams). Tne stream is publically available to anyone interested and made available through a HTTP web-socket. 
 
-This demo consists of the following puzzle pieces 
+This demo consists of the following pieces 
 
-<b>Node-js</b> The demo runs on node-js on a VM to connect and collect data from Bitcoin streaming API. Once messages come through the websocket they are then sent to AWS Kinesis. Essentially the stream flows from the source to an S3 bucket for <i>Snowpipe</i> to ingest.
+<b>API Data Collector</b> node-js on a VM to connect and collect data from Bitcoin streaming API. Once messages come through the websocket they are routed to AWS Kinesis. Essentially the stream flows from the source to an S3 bucket for <i>Snowpipe</i> to ingest.
 
 <b>AWS Kinesis</b> Data from node-js to AWS Kinesis one message at a time. Every 5mbs or 300 seconds, which ever comes first, then data is saved to S3. 
 
-<b>Snowpipe</b> Once the data hits the S3 bucket Snowpipe ingests this dataset into Snowflake. On average this happens every two seconds. This depends on when the SQS message alerts Snowflake that new data is ready to be ingested.
+<b>Snowpipe</b> Once the data hits the S3 bucket Snowpipe ingests dataset into Snowflake. On average this happens every two minutes.
 
-<b>Snowflake</b> Snowflake ingests and houses all data that will later be ready for processing.
+<b>Snowflake</b> Snowflake ingests & houses data that will later for processed.
 
 ![img](https://github.com/mariusndini/img/blob/master/cryptopath.png)
 
-This data set is streamed in real-time as trades are happening on the trading platform. The through put is lagged by two bottle necks. One AWS Kinesis which is currently set to batch every 300 seconds or 5mbs (which ever comes first). Since the data set is relatively small in size it will almost always wait 300 seconds (5 minutes). The second is Snowpipe which will wait until AWS SQS will send a message to Snowflake to ingest the data and this is on average about 120 seconds but usually less. Total lag time between a trade occuring and a decision or the data hitting a report is ~7 minutes.
+This data set is streamed in real-time as trades are happening on the trading platform. The through put is lagged by two services. The first AWS Kinesis which is currently set to batch every 300 seconds or 5mbs (which ever comes first). Since the data set is relatively small in size it will almost always wait 300 seconds (5 minutes). The second is Snowpipe which will wait until AWS SQS will send a message to Snowflake to ingest the data and this is on average about 120 seconds but usually less. Total lag time between a trade occuring and a decision being made on that action is considered ~7 minutes.
 
 
 ## Raw Data Values
-Below is a list of the values we are getting from the API. This data is incoming in real time as people make trades on the exchange. The values of relevence to us are <b>price (p)</b> since this will be the value we are buying and selling this asset. We also care about tracking when this asset was trade so <b>trade time is important (T)</b>, trade id is also important since we may have 2 or 3 trades within any given second trade_id will give us the correct order
+Below is a list of the values we are getting from the API. This data is incoming in real time as trades occur on the exchange. The values of relevence to us are <b>price (p)</b> since this will be the value we are buying and selling this asset. We also care about tracking when this asset was trade so <b>trade time is important (T)</b>, trade id is also important since we may have 2 or 3 trades within any given second <b>trade_id</b> will give us the correct order
 ```
 {
   "e": "trade",     // Event type
@@ -32,7 +32,7 @@ Below is a list of the values we are getting from the API. This data is incoming
   "m": true,        // Is the buyer the market maker?
   "M": true         // Ignore
 }
-(Courtesy of https://github.com/binance-exchange/binance-official-api-docs/blob/master/web-socket-streams.md#trade-streams)
+(https://github.com/binance-exchange/binance-official-api-docs/blob/master/web-socket-streams.md#trade-streams)
 ```
 
 The data above comes in JSON format and we use the view & query below to convert the data into rows & columns for easier processing.
@@ -161,7 +161,15 @@ Providing some context around this data set every second there could be 1 to 20 
 </tbody></table>
 
 ## Candle Stick Charts
-We can take the data above and do some additional processing and aggregation to get candle stick charts off the raw data above. We can also define the time frame for which we want the candle stick. The logic below is straight forward since <b>open</b> is the value of the price at the start of the timeframe. <b>high</b> is the max price during a particular time frame and <b>low</b> is the minimum. Finally the <b>close</b> is the last value of the time frame. 
+We can take the data above and do some additional processing and aggregation to get candle stick charts off the raw data above. We can also define the time frame for which we want the candle stick (minute, hour, day). The logic below is:
+
+<b>open</b> is the value of the price at the start of the timeframe. 
+
+<b>high</b> is the max price during a particular time frame
+
+<b>low</b> is the minimum. 
+
+<b>close</b> is the last value of the time frame. 
 
 ```
 select distinct date_trunc("minutes", trade_time) as TIME
@@ -176,38 +184,42 @@ order by 1 desc ;
 Below are the candle stick values graphed from the above query.
 
 ## Bitcoin Candles
-We can graph data points of our Bitcoin price chart from the view in a google sheet to better see what is happening (https://docs.google.com/spreadsheets/d/11KEiHFvYb61668XHOUCdcPDpIAiuvFjlLk4YazRJc2k/edit#gid=0)
-
-A quick chart shows the data below. Although not live data it would not be challenging to create a report which would be fed with live data from Snowflake database. The caveat being there will be a 5 to 10 minute in the trade times. 
+Bitcoin price chart from the view in a google sheet (https://docs.google.com/spreadsheets/d/11KEiHFvYb61668XHOUCdcPDpIAiuvFjlLk4YazRJc2k/edit#gid=0)
 
 ![img](https://github.com/mariusndini/img/blob/master/BTC_Candles.png)
 
 ### Data in Candle Sticks
-Each candle stick represents a particular time frames (minute, hour, day etc) worth of data about an asset. The information is the <b>open price</b> which is the first trade purchase of the asset and the <b>close price</b> being last trade value. 
+Each candle stick represents a particular time frames (minute, hour, day etc) worth of data about an asset. The information is the 
 
-These two numbers make the <b>trade body</b> and if the close price is higher then the open price the candle stick is positive meaning the asset was more valuable at close time then it was at open time and vice versa is true. 
+<b>open price</b> which is the first trade purchase of the asset 
 
-The two other numbers are the <b>high</b> and <b>low</b> being the maximum value and lowest value someone purchased this asset for during that time frame.
+<b>close price</b> being last trade 
+
+<b>trade body</b> is combosed of the above. if the close price is higher then the open price the candle stick is positive meaning the asset was more valuable at close time then it was at open time and vice versa is true. 
+
+<b>high</b> and <b>low</b> being the maximum value and lowest value someone purchased this asset for during that time frame.
 
 ![img](https://github.com/mariusndini/img/blob/master/bearish_bullish_candlesticks.png)
 
-Should you want more information (https://en.wikipedia.org/wiki/Candlestick_chart)
+More information (https://en.wikipedia.org/wiki/Candlestick_chart)
 
 
 # Making Decisions
-We would like to make decisions off of this data set that could be potentially profitable
+Making decisions off of this data set could be potentially profitable
 ```
 Will be algo, 100%
 will be profitable? Hard to say
 ```
 
 ## Algo
-We will train a machine learning algorithm to see to, potentially, accurately enough predict future values. Machine learning is a deep topic in the computer science field and beyond the scope of this particular demo. What we will cover is high level machine learning.
+We will train a machine learning algorithm to see to, potentially, accurately enough predict future values. Machine learning is a deep topic in computer science and beyond the scope of this particular demo. What we will cover is high level proof of concept in the over all big picture.
 
-As this demo is 100% javascript & node.js using brain.js (easier to use over Tensorflow.js). The algorithm is a LSTM model (https://en.wikipedia.org/wiki/Long_short-term_memory) since it excels at processing time-series data. This same method exists in Python (https://towardsdatascience.com/predicting-stock-price-with-lstm-13af86a74944) and possibly other languages.  
+As this demo is 100% javascript & node.js we will use brain.js (easier to use over Tensorflow.js). The algorithm is a LSTM model (https://en.wikipedia.org/wiki/Long_short-term_memory) because it excels at processing time-series data. This same method exists in Python (https://towardsdatascience.com/predicting-stock-price-with-lstm-13af86a74944) and possibly other languages.  
 
 
-### Snowflake Feeding Algo Training
+### Snowflake Data for Training
+
+
 
 
 
