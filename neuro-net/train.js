@@ -1,107 +1,104 @@
 var brain = require('brain.js');
+//const config = require('./../../config.json');
 const savePng = require('save-svg-as-png');
+const snowflake = require('./snowflakeWrapper.js');
 const fs = require('fs');
 
 
-const net = new brain.recurrent.LSTMTimeStep( { inputSize:4, hiddenLayers:[8, 6, 4],outputSize: 4} )
+var dbConn;
+return snowflake.connect()
+.then((dbConnection)=>{
+    dbConn = dbConnection;
+    return dbConn;
 
-//Training data set
-var training = [
-    [[1.00277592288484, 1.00293257467843, 1.00243474058861, 1.0026113057458],
-    [1.00240553432201, 1.00298833209649, 1.00208161027423, 1.00282238739989],
-    [1.00244801616434, 1.00305072730242, 1.00208293783181, 1.00245067127949],
-    [1.00244934372191, 1.00335208287145, 1.0020736449288, 1.00217852197705],
-    [1.0020590417955, 1.00265113247299, 1.0018094609718, 1.00253032473386],
-    [1.0026896316426, 1.00323393024747, 1.00204311110462, 1.00257147901862]],
+}).then((con)=>{
+    var SQL = ` select open, high, low, close
+                from btc_candle_minutes
+                order by time desc
+                limit 1440;`; //1440 for full day
 
-    [[1.00283433541804, 1.00330296324126, 1.00217188418919, 1.00217321174676],
-    [1.00217188418919, 1.00217321174676, 1.00169794613568, 1.00184264991112],
-    [1.00187185617772, 1.00187185617772, 1.00144703775441, 1.00144703775441],
-    [1.00157050060869, 1.00166608475393, 1.00127180015479, 1.00146031333014],
-    [1.00137667720305, 1.00152801876635, 1.00108992476731, 1.00130233397897],
-    [1.00130233397897, 1.00130233397897, 1.00065315832584, 1.00082574081031]],
+    return snowflake.runSQL(dbConn, SQL)
 
-    [[1.00071024330148, 1.00083105104061, 1.00034516496894, 1.00063988275012],
-    [1.0006359000774, 1.00119347425799, 1.00046995538079, 1.00088282578595],
-    [1.00080715500429, 1.00097442725847, 1.00069829528332, 1.00084432661633],
-    [1.00084565417391, 1.00089875647682, 1.0005429710473, 1.00077396606497],
-    [1.00079520698614, 1.00091999739799, 1.00008363612709, 1.00013142819971],
-    [1.00018054782991, 1.00089211868896, 1, 1.00089211868896]],
-    
-    [[1.00089742891925, 1.00097177214333, 1.00033454450836, 1.00045136957477],
-    [1.000528367914, 1.00109921767032, 1.00044738690205, 1.00085494707692],
-    [1.00082043058002, 1.00088548090109, 1.00069564016818, 1.00070493307118],
-    [1.00069962284089, 1.00071157085905, 1.0005084545504, 1.00070626062876],
-    [1.00071024330148, 1.00090273914954, 1.00004513695748, 1.00027480441758],
-    [1.00027082174486, 1.00041685307788, 1.00000531023029, 1.00041685307788]],
-    
-    [[1.0002933902236, 1.00074608735594, 1.00027613197515, 1.00074608735594],
-    [1.00074608735594, 1.00126383480936, 1.00056022929574, 1.00126117969421],
-    [1.00126117969421, 1.00126383480936, 1.00116161287625, 1.00126117969421],
-    [1.00126383480936, 1.00126383480936, 1.00115099241566, 1.00115763020353],
-    [1.00115364753081, 1.00126383480936, 1.00115099241566, 1.00124790411848],
-    [1.00125719702149, 1.00126781748207, 1.00112311370663, 1.00126781748207]],
-    
-    [[1.00116825066411, 1.00174175553558, 1.00107532163401, 1.00168865323267],
-    [1.00168467055995, 1.00174972088102, 1.00164218871762, 1.00164749894791],
-    [1.00164882650548, 1.00179618539607, 1.00120409471858, 1.00120409471858],
-    [1.00126914503965, 1.00133154024557, 1.00108992476731, 1.00121604273673],
-    [1.00130631665169, 1.00144039996655, 1.00080981011944, 1.00114700974295],
-    [1.00123064587003, 1.00132490245771, 1.00084299905876, 1.00114700974295]],
-    [[1.00121737029431, 1.00149881249975, 1.00057615998662, 1.0013010064214],
-    [1.00140190079693, 1.00161032733587, 1.00077662118012, 1.00144438263926],
-    [1.00145500309985, 1.00164617139034, 1.0012080773913, 1.00129304107596],
-    [1.00128242061538, 1.00136074651217, 1.00034118229622, 1.00048057584137]]
-];
+}).then((data)=>{
 
+    var normalize = function ( step ){
+        var n = data[0].LOW;
+        return {
+            open: step.OPEN /7400, 
+            high: step.HIGH /7400, 
+            low: step.LOW /7400, 
+            close: step.CLOSE /7400
+        }
+    }
 
-/*
-var trainOptions = {
-    // Defaults values --> expected validation
-    iterations: 10, // the maximum times to iterate the training data --> number greater than 0
-    errorThresh: 0.005, // the acceptable error percentage from training data --> number between 0 and 1
-    log: false, // true to use console.log, when a function is supplied it is used --> Either true or a function
-    logPeriod: 10, // iterations between logging out --> number greater than 0
-    learningRate: 0.3, // scales with delta to effect training rate --> number between 0 and 1
-    momentum: 0.1, // scales with next layer's change value --> number between 0 and 1
-    callback: null, // a periodic call back that can be triggered while training --> null or function
-    callbackPeriod: 10, // the number of iterations through the training data between callback calls --> number greater than 0
-    timeout: Infinity, // the max number of milliseconds to train for --> number greater than 0
-};
-*/
+    var raw = data.map( normalize );
 
-net.train(training, {
-    learningRate: 0.005,
-    errorThresh: 0.005,
-    log: (error) => console.log(error),
-    logPeriod: 10
+    var training = [ raw.slice(0,100), raw.slice(100,200), raw.slice(200, 300), raw.slice(300,400), raw.slice(400,500), raw.slice(500,600) , raw.slice(600,700),
+                     raw.slice(600,700), raw.slice(700,800), raw.slice(900, 1000), raw.slice(1000,1100), raw.slice(1100,1200), raw.slice(1200,1300) , raw.slice(1300,1440) ];
+
+    trainModel(training);
+
+    return;
+
 })
 
-//write model
-fs.writeFile('ml.json', JSON.stringify( net.toJSON()), (err) => {
-    if (err) throw err;
-
-    console.log('ML saved');
-});
 
 
-//SAVE SVG OPTIONS
-const svgoptions ={
-    fontSize : "12px",
-    width : 600,
-    height : 400,
-    radius : 6,
-    line : {width:0.5, color:"rgba(0,0,0,1)" },
-    inputs : {color:"rgba(0,127,0,0.6)", labels:["Open", "High", "Low", "Close"] },
-    hidden : {color:"rgba(255,127,80,0.6)"},
-    outputs : {color:"rgba(100,149,237,0.6)" }
+
+function trainModel(trainingData){
+    const net = new brain.recurrent.LSTMTimeStep( { inputSize:4, hiddenLayers:[8, 8],outputSize: 4} )
+
+    //Training data set
+    var training = trainingData;
+    /*
+    var trainOptions = {
+        // Defaults values --> expected validation
+        iterations: 10, // the maximum times to iterate the training data --> number greater than 0
+        errorThresh: 0.005, // the acceptable error percentage from training data --> number between 0 and 1
+        log: false, // true to use console.log, when a function is supplied it is used --> Either true or a function
+        logPeriod: 10, // iterations between logging out --> number greater than 0
+        learningRate: 0.3, // scales with delta to effect training rate --> number between 0 and 1
+        momentum: 0.1, // scales with next layer's change value --> number between 0 and 1
+        callback: null, // a periodic call back that can be triggered while training --> null or function
+        callbackPeriod: 10, // the number of iterations through the training data between callback calls --> number greater than 0
+        timeout: Infinity, // the max number of milliseconds to train for --> number greater than 0
+    };
+    */
+
+    net.train(training, {
+        learningRate: 0.004,
+        errorThresh: 0.018,
+        log: (error) => console.log(error),
+        logPeriod: 10
+
+    })
+
+    //write model
+    fs.writeFile('ml.json', JSON.stringify( net.toJSON()), (err) => {
+        if (err) throw err;
+        console.log('ML saved');
+
+    });
+
+
+    //SAVE SVG OPTIONS
+    const svgoptions ={
+        fontSize : "12px",
+        width : 600,
+        height : 400,
+        radius : 6,
+        line : {width:0.5, color:"rgba(0,0,0,1)" },
+        inputs : {color:"rgba(0,127,0,0.6)", labels:["Open", "High", "Low", "Close"] },
+        hidden : {color:"rgba(255,127,80,0.6)"},
+        outputs : {color:"rgba(100,149,237,0.6)" }
+    }
+
+    //write svg
+    fs.writeFile('ml.svg', brain.utilities.toSVG(net, svgoptions), (err) => {
+        if (err) throw err;
+        console.log('SVG saved');
+
+    });
+    
 }
-
-//write svg
-fs.writeFile('ml.svg', brain.utilities.toSVG(net, svgoptions), (err) => {
-    if (err) throw err;
-
-    console.log('SVG saved');
-});
-
 

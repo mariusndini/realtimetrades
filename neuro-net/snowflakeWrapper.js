@@ -1,5 +1,5 @@
 var snowflake = require('snowflake-sdk');
-const config = require('./config.json');
+const config = require('./../../config.json');
 
 var connection = snowflake.createConnection(config.snowflake);
 
