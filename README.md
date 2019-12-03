@@ -194,12 +194,20 @@ The two other numbers are the <b>high</b> and <b>low</b> being the maximum value
 Should you want more information (https://en.wikipedia.org/wiki/Candlestick_chart)
 
 
-# Making Decisions with Candle Stick Data
-We would like to make decisions off of this data set that could be potentially profitable. For this task we are going to attempt to train a machine learning algorithm to see if we can accurately enough predict future values to our advantage. Machine learning is a deep topic in the computer science field and beyond the scope of this particular demo. What we will cover is high level machine learning topics as it pertains to this particular data set and demo. I am in no way an expert in the field just like to tinker around.
+# Making Decisions
+We would like to make decisions off of this data set that could be potentially profitable
+```
+Will be algo, 100%
+will be profitable? Hard to say
+```
 
-As this demo is 100% javascript & node.js the two libraries today are tensorflow.js (most popular) and the one used here brain.js (easier to use). The algorithm is a LSTM model (https://en.wikipedia.org/wiki/Long_short-term_memory) since it excels at processing time-series data. There are plenty of existing demos existing already on the web on how to do this and we are going to leverage one of them. 
+## Algo
+We will train a machine learning algorithm to see to, potentially, accurately enough predict future values. Machine learning is a deep topic in the computer science field and beyond the scope of this particular demo. What we will cover is high level machine learning.
+
+As this demo is 100% javascript & node.js using brain.js (easier to use over Tensorflow.js). The algorithm is a LSTM model (https://en.wikipedia.org/wiki/Long_short-term_memory) since it excels at processing time-series data. This same method exists in Python (https://towardsdatascience.com/predicting-stock-price-with-lstm-13af86a74944) and possibly other languages.  
 
 
+### Snowflake Feeding Algo Training
 
 
 

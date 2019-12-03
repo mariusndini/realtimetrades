@@ -74,12 +74,16 @@ function trainModel(trainingData){
     })
 
     //write model
+
+    console.log( JSON.stringify( net.toJSON()));
+
+    /*
     fs.writeFile('ml.json', JSON.stringify( net.toJSON()), (err) => {
         if (err) throw err;
         console.log('ML saved');
 
     });
-
+*/
 
     //SAVE SVG OPTIONS
     const svgoptions ={
@@ -94,11 +98,14 @@ function trainModel(trainingData){
     }
 
     //write svg
+    console.log( brain.utilities.toSVG(net, svgoptions) );
+    
+    /*
     fs.writeFile('ml.svg', brain.utilities.toSVG(net, svgoptions), (err) => {
         if (err) throw err;
         console.log('SVG saved');
 
     });
-    
+    */
 }
 
