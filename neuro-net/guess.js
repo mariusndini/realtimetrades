@@ -2,8 +2,10 @@ var brain = require('brain.js');
 const fs = require('fs');
 const snowflake = require('./snowflakeWrapper.js');
 
+var norm = 7800;
 
 var dbConn;
+var world = {}
 return snowflake.connect()
 .then((dbConnection)=>{
     dbConn = dbConnection;
@@ -14,50 +16,61 @@ return snowflake.connect()
                 order by time desc
                 limit 100;`; //1440 for full day
 
-    return snowflake.runSQL(dbConn, SQL)
+    return snowflake.runSQL(dbConn, SQL);
+
 }).then((data)=>{
     
     var normalize = function ( step ){
         var n = data[0].LOW;
         return {
-            open: step.OPEN /7400, 
-            high: step.HIGH /7400, 
-            low: step.LOW /7400, 
-            close: step.CLOSE /7400
+            open: step.OPEN / norm, 
+            high: step.HIGH / norm, 
+            low: step.LOW / norm, 
+            close: step.CLOSE /norm
         }
     }
 
-    var input = data.map( normalize );
+    world.input = data.map( normalize );
 
+    var SQL = ` select model
+    from models
+    order by date desc
+    limit 1;`; //1440 for full day
 
-    //-------------------------------------------
-    const net = new brain.recurrent.LSTMTimeStep()
+    return snowflake.runSQL(dbConn, SQL)
 
-    return fs.readFile('ml.json', {encoding: 'utf-8'}, (err, data) => {
-        var denormalize = function ( step ){
-            var n = data[0].LOW;
-            return {
-                open: step.open *7400, 
-                high: step.high *7400, 
-                low: step.low *7400, 
-                close: step.close *7400
-            }
+}).then((data)=>{
+        
+    const net = new brain.recurrent.LSTMTimeStep();
+    net.fromJSON( data[0].MODEL );
+    world.model = data[0].MODEL;
+
+    var denormalize = function ( step ){
+        var now = parseInt(now) + (1000 * 60);
+        return {
+            open: step.open * norm, 
+            high: step.high * norm, 
+            low: step.low * norm, 
+            close: step.close * norm
         }
+    }
+
+    var output = net.forecast( [ world.input ], 30 ).map( denormalize );
+    output.now = new Date().getTime();
 
 
-        net.fromJSON(JSON.parse(data) )
-        var output = net.forecast( [ input ], 10 ).map( denormalize );
-        console.log(output);
-        return output;
-        
-        
-    })
+    console.log(output);
 
+    var SQL = ` insert into guesses (date, output, model) 
+    select current_timestamp , 
+    PARSE_JSON('` + JSON.stringify(output) + `'), 
+    PARSE_JSON('`+ JSON.stringify(world.model) +`')`; //1440 for full day
 
-}).then((forecast)=>{
-    //promise doesnt work as of yet
+    return snowflake.runSQL(dbConn, SQL)
 
-
+}).then((data)=>{
+    console.log(data);
+    
 })
 
 

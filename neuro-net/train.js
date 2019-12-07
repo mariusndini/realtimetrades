@@ -4,8 +4,11 @@ const savePng = require('save-svg-as-png');
 const snowflake = require('./snowflakeWrapper.js');
 const fs = require('fs');
 
+var norm = 7800;
 
 var dbConn;
+var world = {};
+
 return snowflake.connect()
 .then((dbConnection)=>{
     dbConn = dbConnection;
@@ -15,39 +18,60 @@ return snowflake.connect()
     var SQL = ` select open, high, low, close
                 from btc_candle_minutes
                 order by time desc
-                limit 1440;`; //1440 for full day
+                limit 4320;`; //1440 for full day
 
-    return snowflake.runSQL(dbConn, SQL)
-
+    return snowflake.runSQL(dbConn, SQL);
 }).then((data)=>{
+    world.trainData = data;
+
+    var SQL = ` select ops
+        from trainOps
+        order by date desc
+        limit 1;
+        `; //1440 for full day
+
+    return snowflake.runSQL(dbConn, SQL);
+
+}).then((trainOps)=>{
+    var data = world.trainData;
+    norm = trainOps[0].OPS.norm;
 
     var normalize = function ( step ){
         var n = data[0].LOW;
         return {
-            open: step.OPEN /7400, 
-            high: step.HIGH /7400, 
-            low: step.LOW /7400, 
-            close: step.CLOSE /7400
+            open: step.OPEN / norm, 
+            high: step.HIGH / norm, 
+            low: step.LOW / norm, 
+            close: step.CLOSE / norm
         }
     }
 
     var raw = data.map( normalize );
 
-    var training = [ raw.slice(0,100), raw.slice(100,200), raw.slice(200, 300), raw.slice(300,400), raw.slice(400,500), raw.slice(500,600) , raw.slice(600,700),
-                     raw.slice(600,700), raw.slice(700,800), raw.slice(900, 1000), raw.slice(1000,1100), raw.slice(1100,1200), raw.slice(1200,1300) , raw.slice(1300,1440) ];
+    var training = [ raw.slice(0,100), raw.slice(100,200), raw.slice(200, 300), raw.slice(300,400), raw.slice(400,500), raw.slice(500,600), raw.slice(600,700),
+                     raw.slice(600,700), raw.slice(700,800), raw.slice(900, 1000), raw.slice(1000,1100), raw.slice(1100,1200), raw.slice(1200,1300), raw.slice(1300,1440) ];
 
-    trainModel(training);
+    var res = trainModel( [raw], trainOps[0].OPS );
 
-    return;
+    var SQL = ` insert into models (date, model, svg, log, ops) 
+                select current_timestamp , 
+                PARSE_JSON('` + res.model + `'), '` + res.svg + `', 
+                PARSE_JSON('` + JSON.stringify(res.trainlog) + `'), `
+                + `PARSE_JSON('` + JSON.stringify(res.trainOps) + `');`;
+    return snowflake.runSQL(dbConn, SQL);
+
+
+}).then(()=>{
+    console.log('Saved --> SNFLK');
 
 })
 
 
+function trainModel(trainingData, ops){
+    console.log(ops);
 
-
-function trainModel(trainingData){
-    const net = new brain.recurrent.LSTMTimeStep( { inputSize:4, hiddenLayers:[8, 8],outputSize: 4} )
-
+    const net = new brain.recurrent.LSTMTimeStep( { inputSize:4, hiddenLayers: ops.hiddenLayers, outputSize: 4} )
+    var res = {};
     //Training data set
     var training = trainingData;
     /*
@@ -65,25 +89,22 @@ function trainModel(trainingData){
     };
     */
 
-    net.train(training, {
-        learningRate: 0.004,
-        errorThresh: 0.018,
-        log: (error) => console.log(error),
-        logPeriod: 10
+    var trainErr = [];
+    var trainOps = ops;
 
-    })
+    res.trainOps = trainOps;
 
-    //write model
+    trainOps.log = (error) => {
+            //console.log(error);
+            trainErr.push( { iter: error.split(',')[0].split(':')[1], 
+                              err: error.split(',')[1].split(':')[1] });
+    };
 
-    console.log( JSON.stringify( net.toJSON()));
+    net.train(training, trainOps);
 
-    /*
-    fs.writeFile('ml.json', JSON.stringify( net.toJSON()), (err) => {
-        if (err) throw err;
-        console.log('ML saved');
+    res.trainlog = trainErr;
 
-    });
-*/
+    res.model =  JSON.stringify( net.toJSON() );
 
     //SAVE SVG OPTIONS
     const svgoptions ={
@@ -98,14 +119,10 @@ function trainModel(trainingData){
     }
 
     //write svg
-    console.log( brain.utilities.toSVG(net, svgoptions) );
-    
-    /*
-    fs.writeFile('ml.svg', brain.utilities.toSVG(net, svgoptions), (err) => {
-        if (err) throw err;
-        console.log('SVG saved');
+    res.svg = brain.utilities.toSVG(net, svgoptions) ;
 
-    });
-    */
+    return res;
+
+
 }
 

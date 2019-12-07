@@ -218,7 +218,7 @@ As this demo is 100% javascript & node.js we will use brain.js (user friendly ov
 
 
 ## Snowflake Data for Training
-Within our node.js code select data from snowflake. 
+within the <b>neuro-net</B> folder is the code for <b>train.js</b>, which is where the model training happens. Below logic trains model
 
 Save model graph & trained model to snowflake (JSON & small format).
 
@@ -232,8 +232,8 @@ Over time compare predictions to real results
 Come to conclusion whether model was profitable or unprofitable
 
 ```
-if profitable make money 
-if unprofitable0 --> Train again --> Until profitable
+if profitable : make money 
+if unprofitable : Train again --> Until profitable
 ```
 
 
