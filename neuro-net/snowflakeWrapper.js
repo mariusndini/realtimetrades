@@ -11,7 +11,7 @@ module.exports = {
                     if(err.code == 405502){
                         resolve(connection);
                     }
-                    console.log(JSON.stringify(err) );
+                    //console.log(JSON.stringify(err) );
                     reject(err);
                 } else {
                     resolve (conn);

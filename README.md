@@ -56,112 +56,13 @@ create or replace view trades as
   order by TRADE_TIME desc ;
 ```
 
-Providing some context around this data set every second there could be 1 to 20 trades given the traffic. Every hour there could be any where between ~10k and ~20k trades on this particular crypto-pair. The table below highlights trading volumes for the a particular day.
+Providing some context, every second there could be 1 to 20 trades given the traffic. Every hour there could be ~10k and ~20k trades on this particular crypto-pair. The chart below highlights trading volumes for a full 24 hour period.
 
-<table class="table table-bordered table-hover table-condensed">
-<thead><tr><th title="Field #1">Time</th>
-<th title="Field #2">Trades</th>
-</tr></thead>
-<tbody><tr>
-<td>12/2/2019  8:00:00 PM</td>
-<td align="right">11715</td>
-</tr>
-<tr>
-<td>12/2/2019  7:00:00 PM</td>
-<td align="right">8587</td>
-</tr>
-<tr>
-<td>12/2/2019  6:00:00 PM</td>
-<td align="right">9330</td>
-</tr>
-<tr>
-<td>12/2/2019  5:00:00 PM</td>
-<td align="right">12641</td>
-</tr>
-<tr>
-<td>12/2/2019  4:00:00 PM</td>
-<td align="right">12736</td>
-</tr>
-<tr>
-<td>12/2/2019  3:00:00 PM</td>
-<td align="right">14204</td>
-</tr>
-<tr>
-<td>12/2/2019  2:00:00 PM</td>
-<td align="right">21142</td>
-</tr>
-<tr>
-<td>12/2/2019  1:00:00 PM</td>
-<td align="right">10346</td>
-</tr>
-<tr>
-<td>12/2/2019  12:00:00 PM</td>
-<td align="right">15830</td>
-</tr>
-<tr>
-<td>12/2/2019  11:00:00 AM</td>
-<td align="right">11543</td>
-</tr>
-<tr>
-<td>12/2/2019  10:00:00 AM</td>
-<td align="right">19343</td>
-</tr>
-<tr>
-<td>12/2/2019  9:00:00 AM</td>
-<td align="right">18643</td>
-</tr>
-<tr>
-<td>12/2/2019  8:00:00 AM</td>
-<td align="right">15124</td>
-</tr>
-<tr>
-<td>12/2/2019  7:00:00 AM</td>
-<td align="right">12697</td>
-</tr>
-<tr>
-<td>12/2/2019  6:00:00 AM</td>
-<td align="right">30403</td>
-</tr>
-<tr>
-<td>12/2/2019  5:00:00 AM</td>
-<td align="right">17256</td>
-</tr>
-<tr>
-<td>12/2/2019  4:00:00 AM</td>
-<td align="right">13160</td>
-</tr>
-<tr>
-<td>12/2/2019  3:00:00 AM</td>
-<td align="right">10947</td>
-</tr>
-<tr>
-<td>12/2/2019  2:00:00 AM</td>
-<td align="right">9346</td>
-</tr>
-<tr>
-<td>12/2/2019  1:00:00 AM</td>
-<td align="right">10648</td>
-</tr>
-<tr>
-<td>12/2/2019  12:00:00 AM</td>
-<td align="right">12375</td>
-</tr>
-<tr>
-<td>12/1/2019  11:00:00 PM</td>
-<td align="right">14081</td>
-</tr>
-<tr>
-<td>12/1/2019  10:00:00 PM</td>
-<td align="right">17254</td>
-</tr>
-<tr>
-<td>12/1/2019  9:00:00 PM</td>
-<td align="right">14893</td>
-</tr>
-</tbody></table>
+![img](https://github.com/mariusndini/img/blob/master/BTCTradesDay.png)
+
 
 ## Candle Stick Charts
-We can take the data above and do some additional processing and aggregation to get candle stick charts off the raw data above. We can also define the time frame for which we want the candle stick (minute, hour, day). The logic below is:
+Taking the raw data above additional processing and aggregation can be done to calculate candle stick charts. We can also define the time frame for which we want the candle stick (minute, hour, day). The logic below is:
 
 <b>open</b> is the value of the price at the start of the timeframe. 
 
@@ -217,12 +118,35 @@ We will train a machine learning algorithm to, potentially, accurately enough pr
 As this demo is 100% javascript & node.js we will use brain.js (user friendly over Tensorflow.js). The algorithm is a LSTM model (https://en.wikipedia.org/wiki/Long_short-term_memory) because it excels at processing time-series data. This same method exists in Python (https://towardsdatascience.com/predicting-stock-price-with-lstm-13af86a74944) and possibly other languages.  
 
 
-## Snowflake Data for Training
-within the <b>neuro-net</B> folder is the code for <b>train.js</b>, which is where the model training happens. Below logic trains model
+# Snowflake Data for Training
+within the <b>neuro-net</B> folder is the code for <b>train.js</b>, which is where the model training happens. Logic below trains model
 
 Save model graph & trained model to snowflake (JSON & small format).
 
-### Predicting w/ Trained Model
+## Training Data Set from Snowflake
+We have covered how data gets into Snowflake, but we have not used this data yet. This data can now be used to train a model to later be used for predictions. The flow diagram of what is happening in the Node.js code is below.
+
+![img](https://github.com/mariusndini/img/blob/master/trainjsflow.png)
+
+1) <b>connect</b> to Snowflake through the Node.js connector provided by Snowflake (https://github.com/snowflakedb)
+
+2) <b>Trading Data SQL</b> Here we will write the SQL to return x amount of days worth of trading data (we are currently using the most current 3 days worth of data). We have broken the candle sticks up by minute increments and we take the last 4320 minutes worth of data points.
+```
+select open, high, low, close
+from btc_candle_minutes
+order by time desc
+limit 4320;
+```
+
+3) <b>Process SQL</b> Snowflake will take our query and provide us with the Data set
+
+4) <b>Train LSTM Model </b> Once the data is returned to Node we will utilize that data to train the LSTM model in Brain.js
+
+5) <b>Saved Trained Model</b> Once the model has been trained on whatever our parameters are we will save the model to Snowflake.
+
+5.a) <b>guess.js</b> Once a model has been trained we can use it to predict future values and see how accurate it is. guess.js does this and is kicked off as a last step to our train.js logic. We will get the next 1440 minutes (24 hours) of data points. 
+
+## Predicting w/ Trained Model
 Use trained model to make predictions
 
 Save predictions to Snowflake
