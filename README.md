@@ -175,14 +175,17 @@ Password: Red123!!!
 <b>TICKERPRICES (TABLE)</b> This table is where all the <b>AWS Kinesis</b> data is stored. Snowpipe populates this table which all of the logic is based off of. This table has the individual ticker trades. From this table the <b>MINUTE</b> and <b>HOURLY</b> candle stick charts are aggregated from.
 
 <b>trainOps (table)</b> Stores the options values for training a model. This data is taken into account when training a model. 
-```{
+```
+{
     learningRate: 0.007,
     errorThresh: 0.03,
     iterations: 50,
     logPeriod: 10,
     hiddenLayers:[8, 4, 8],
     norm: 7800
-}```
+}
+```
+
 The options above are directly used when training a model. It is possible to populate this table with as many modelling options as necessary and the node.js logic will iterate through the values to train a model based on the options provided in the queue.
 
 <b>models (table)</b> This table stores the models, SVG (model diagram), error rate of the model as it is training, the options taken into account when training this model, and the time stamp.
