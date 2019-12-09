@@ -1,5 +1,5 @@
 # Real Time Trades (Bitcoin - USD pair)
-This demo collects real time Bitcoin-USD pair trades from Binance API (https://github.com/binance-exchange/binance-official-api-docs/blob/master/web-socket-streams.md#trade-streams). Tne stream is publically available to anyone interested and made available through a HTTP web-socket. 
+This demo collects real time Bitcoin-USD pair trades from Binance API (https://github.com/binance-exchange/binance-official-api-docs/blob/master/web-socket-streams.md#trade-streams). The stream is publically available to anyone interested through a HTTP web-socket. 
 
 This demo consists of the following pieces 
 
@@ -9,7 +9,7 @@ This demo consists of the following pieces
 
 <b>Snowpipe</b> Once the data hits the S3 bucket Snowpipe ingests dataset into Snowflake. On average this happens every two minutes.
 
-<b>Snowflake</b> Snowflake ingests & houses data that will later for processed.
+<b>Snowflake</b> Snowflake ingests & houses data that will later be processed.
 
 ![img](https://github.com/mariusndini/img/blob/master/cryptopath.png)
 
@@ -17,7 +17,7 @@ This data set is streamed in real-time as trades are happening on the trading pl
 
 
 ## Raw Data Values
-Below is a list of the values from the API. Data is incoming in real time as trades occur on the exchange. The values of relevence are <b>price (p)</b> since this will be the value we are buying and selling this asset. We also care about tracking when this asset was trade so <b>trade time is important (T)</b>, trade id is also important since we may have 2 or 3 trades within any given second <b>trade_id</b> will give us the correct order
+The values of relevence are <b>price (p)</b> since this will be the value we are buying and selling this asset. We also care about tracking when this asset was trade so <b>trade time is important (T)</b>, trade id is also important since we may have 2 or 3 trades within any given second <b>trade_id</b> will give us the correct order
 ```
 {
   "e": "trade",     // Event type
@@ -82,7 +82,6 @@ select distinct date_trunc("minutes", trade_time) as TIME
 from trades
 order by 1 desc ;
 ```
-Below are the candle stick values graphed from the above query.
 
 ## Bitcoin Candles
 Bitcoin price chart from the view in a google sheet (https://docs.google.com/spreadsheets/d/11KEiHFvYb61668XHOUCdcPDpIAiuvFjlLk4YazRJc2k/edit#gid=0)
@@ -112,19 +111,17 @@ Will be algo, 100%
 will be profitable? Hard to say
 ```
 
-## Algo
+## Algo (Attempt at training LSTM model)
 We will train a machine learning algorithm to, potentially, accurately enough predict future values. Machine learning is a deep topic in computer science and beyond the scope of this particular demo. What we will cover is high level proof of concept in the over all big picture.
 
 As this demo is 100% javascript & node.js we will use brain.js (user friendly over Tensorflow.js). The algorithm is a LSTM model (https://en.wikipedia.org/wiki/Long_short-term_memory) because it excels at processing time-series data. This same method exists in Python (https://towardsdatascience.com/predicting-stock-price-with-lstm-13af86a74944) and possibly other languages.  
 
 
 # Snowflake Data for Training
-within the <b>neuro-net</B> folder is the code for <b>train.js</b>, which is where the model training happens. Logic below trains model
-
-Save model graph & trained model to snowflake (JSON & small format).
+within the <b>neuro-net</B> folder is the code for <b>train.js</b>, which is where the model training happens. After a model is trained it will kick off <b>guess.js</b> logic to guess the next days trade values.
 
 ## Training Data Set from Snowflake
-We have covered how data gets into Snowflake, but we have not used this data yet. This data can now be used to train a model to later be used for predictions. The flow diagram of what is happening in the Node.js code is below.
+Data can now be used to train a model to later be used for predictions. The flow diagram of what is happening in the Node.js code is below.
 
 ![img](https://github.com/mariusndini/img/blob/master/trainjsflow.png)
 
@@ -155,12 +152,43 @@ After the above work flow completes a trained model to predict future values is 
 
 2) <b>Data & Trained model</b> Here we recieve the trained model in the previous step and the most recent data points to attemp to guess the next 1440 minutes of trade values.
 
-3) <b>Guess</b> The LSTM model will predict the values
+3) Closely tied to 2
 
-4) <b>Save Values </b> Once the data is predicted the values are saved in Snowflake. We will save the next days values and once tomorrow hits we will see how accurate our model was against the actual trade information. 
+4) <b>Guess</b> The LSTM model will predict the values
+
+5) <b>Save Values </b> Once the data is predicted the values are saved in Snowflake. We will save the next days values and once the next day comes we will see how accurate our model was against the actual trade information. 
 
 
-# Compare results
+# Full Architecture & Putting it all Together
+In the above we have covered all the physical layers which put this demo together. The logical layer is a bit more simplified within the Snowflake environment. It is essentially a couple of days which store this data that the node.js code utilizes to maintain the state of the demo and store all the information.
+
+### Data Model
+Below is a diagram of the tables and views which support all of the above logic. There is also a share account which you can log into to view this information provided and query it on as needed basis.
+```
+https://hs62187.snowflakecomputing.com/console
+Username: Traders
+Password: Red123!!!
+```
+
+![img](https://github.com/mariusndini/img/blob/master/btcmodelapp.png)
+
+<b>TICKERPRICES (TABLE)</b> This table is where all the <b>AWS Kinesis</b> data is stored. Snowpipe populates this table which all of the logic is based off of. This table has the individual ticker trades. From this table the <b>MINUTE</b> and <b>HOURLY</b> candle stick charts are aggregated from.
+
+<b>trainOps (table)</b> Stores the options values for training a model. This data is taken into account when training a model. 
+```{
+    learningRate: 0.007,
+    errorThresh: 0.03,
+    iterations: 50,
+    logPeriod: 10,
+    hiddenLayers:[8, 4, 8],
+    norm: 7800
+}```
+The options above are directly used when training a model. It is possible to populate this table with as many modelling options as necessary and the node.js logic will iterate through the values to train a model based on the options provided in the queue.
+
+<b>models (table)</b> This table stores the models, SVG (model diagram), error rate of the model as it is training, the options taken into account when training this model, and the time stamp.
+
+<b>guesses (table)</b> Stores the next days worth of gusses by minute. After a model has been trained it will attempt to guess the next 1440 minutes worth of data (a full day). That data is stored here.
+
 
 ```
 if profitable : make money 

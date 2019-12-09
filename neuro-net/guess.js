@@ -49,19 +49,18 @@ module.exports = {
             net.fromJSON( data[0].MODEL );
             world.model = data[0].MODEL;
 
-            var denormalize = function ( step ){
+            var denormalize = function ( step, index ){
                 var now = parseInt(now) + (1000 * 60);
                 return {
                     open: step.open * norm, 
                     high: step.high * norm, 
                     low: step.low * norm, 
-                    close: step.close * norm
+                    close: step.close * norm,
+                    t: new Date().getTime() + (1000 * (60 * index))
                 }
             }
 
             var output = net.forecast( [ world.input ], 1440 ).map( denormalize );
-            output.now = new Date().getTime();
-            console.log(output);
 
             var SQL = ` insert into guesses (date, output, model) 
             select current_timestamp , 
