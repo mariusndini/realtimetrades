@@ -53,8 +53,8 @@ module.exports = {
 
             var raw = data.map( normalize );
 
-            var training = [ raw.slice(0,100), raw.slice(100,200), raw.slice(200, 300), raw.slice(300,400), raw.slice(400,500), raw.slice(500,600), raw.slice(600,700),
-                            raw.slice(600,700), raw.slice(700,800), raw.slice(900, 1000), raw.slice(1000,1100), raw.slice(1100,1200), raw.slice(1200,1300), raw.slice(1300,1440) ];
+            //var training = [ raw.slice(0,100), raw.slice(100,200), raw.slice(200, 300), raw.slice(300,400), raw.slice(400,500), raw.slice(500,600), raw.slice(600,700),
+            //               raw.slice(600,700), raw.slice(700,800), raw.slice(900, 1000), raw.slice(1000,1100), raw.slice(1100,1200), raw.slice(1200,1300), raw.slice(1300,1440) ];
 
             world.res = trainModel( [raw], trainOps[0].OPS );
 

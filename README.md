@@ -144,16 +144,23 @@ limit 4320;
 
 5) <b>Saved Trained Model</b> Once the model has been trained on whatever our parameters are we will save the model to Snowflake.
 
-5.a) <b>guess.js</b> Once a model has been trained we can use it to predict future values and see how accurate it is. guess.js does this and is kicked off as a last step to our train.js logic. We will get the next 1440 minutes (24 hours) of data points. 
+6) <b>guess.js</b> Once a model has been trained we can use it to predict future values and see how accurate it is. guess.js does this and is kicked off as a last step to our train.js logic. We will get the next 1440 minutes (24 hours) of data points. 
 
 ## Predicting w/ Trained Model
-Use trained model to make predictions
+After the above work flow completes a trained model to predict future values is provided. The below work flow is used to guess the next 1440 minutes of candle stick values and then saved to Snowflake.
 
-Save predictions to Snowflake
+![img](https://github.com/mariusndini/img/blob/master/guessjsflow.png)
 
-Over time compare predictions to real results
+1) <b>connect</b> to Snowflake through the Node.js connector provided by Snowflake (https://github.com/snowflakedb)
 
-Come to conclusion whether model was profitable or unprofitable
+2) <b>Data & Trained model</b> Here we recieve the trained model in the previous step and the most recent data points to attemp to guess the next 1440 minutes of trade values.
+
+3) <b>Guess</b> The LSTM model will predict the values
+
+4) <b>Save Values </b> Once the data is predicted the values are saved in Snowflake. We will save the next days values and once tomorrow hits we will see how accurate our model was against the actual trade information. 
+
+
+# Compare results
 
 ```
 if profitable : make money 
