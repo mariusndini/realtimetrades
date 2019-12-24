@@ -111,7 +111,7 @@ Will be algo, 100%
 will be profitable? Hard to say
 ```
 
-## Algo (Attempt at training LSTM model)
+## Algo (Training LSTM model)
 We will train a machine learning algorithm to, potentially, accurately enough predict future values. Machine learning is a deep topic in computer science and beyond the scope of this particular demo. What we will cover is high level proof of concept in the over all big picture.
 
 As this demo is 100% javascript & node.js we will use brain.js (user friendly over Tensorflow.js). The algorithm is a LSTM model (https://en.wikipedia.org/wiki/Long_short-term_memory) because it excels at processing time-series data. This same method exists in Python (https://towardsdatascience.com/predicting-stock-price-with-lstm-13af86a74944) and possibly other languages.  

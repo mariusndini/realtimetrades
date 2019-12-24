@@ -4,7 +4,7 @@ const savePng = require('save-svg-as-png');
 const snowflake = require('./snowflakeWrapper.js');
 const fs = require('fs');
 
-var norm = 7800;
+var norm = 7800.0;
 
 var dbConn;
 var world = {};
@@ -17,21 +17,19 @@ module.exports = {
             return dbConn;
 
         }).then((con)=>{
-            var SQL = ` select open, high, low, close
+            var SQL = ` select * from(select open, high, low, close, time
                         from btc_candle_minutes
                         order by time desc
-                        limit 4320;`; //1440 for full day
+                        limit 11520) order by time asc;`; //1440 for full day - use the last 3 dails to train model
 
             return snowflake.runSQL(dbConn, SQL);
         }).then((data)=>{
             world.trainData = data;
-
             var SQL = ` select ops, id
                 from trainOps
                 where train = true
-                order by date desc
-                limit 1;
-                `; //1440 for full day
+                order by date asc
+                limit 1; `; //Get the next model to train
 
             return snowflake.runSQL(dbConn, SQL);
 
@@ -53,10 +51,15 @@ module.exports = {
 
             var raw = data.map( normalize );
 
-            //var training = [ raw.slice(0,100), raw.slice(100,200), raw.slice(200, 300), raw.slice(300,400), raw.slice(400,500), raw.slice(500,600), raw.slice(600,700),
-            //               raw.slice(600,700), raw.slice(700,800), raw.slice(900, 1000), raw.slice(1000,1100), raw.slice(1100,1200), raw.slice(1200,1300), raw.slice(1300,1440) ];
+            var training = [];
 
-            world.res = trainModel( [raw], trainOps[0].OPS );
+            var i,j,temparray=[],chunk = 5;
+            for (i=0,j=raw.length; i<j; i+=chunk) {
+                temparray = raw.slice(i, i+chunk);
+                training.push(temparray);
+            }
+
+            world.res = trainModel( training, trainOps[0].OPS );
 
             var SQL = ` insert into models (date, model, svg, log, ops) 
                         select current_timestamp , 
@@ -65,8 +68,8 @@ module.exports = {
                         + `PARSE_JSON('` + JSON.stringify(world.res.trainOps) + `');`;
             return snowflake.runSQL(dbConn, SQL);
 
-
         }).then((dbres)=>{
+            console.log('-- TRAIN -- ');
             console.log(dbres);
             var SQL = ` update trainOps
                         set train = false
@@ -76,6 +79,7 @@ module.exports = {
 
 
         }).then((dbres)=>{
+            console.log('-- TRAIN -- ');
             console.log(dbres);
             console.log('Saved --> SNFLK');
             return(world.id);
@@ -111,7 +115,6 @@ function trainModel(trainingData, ops){
     res.trainOps = trainOps;
 
     trainOps.log = (error) => {
-            //console.log(error);
             trainErr.push( { iter: error.split(',')[0].split(':')[1], 
                               err: error.split(',')[1].split(':')[1] });
     };
@@ -124,10 +127,10 @@ function trainModel(trainingData, ops){
 
     //SAVE SVG OPTIONS
     const svgoptions ={
-        fontSize : "12px",
+        fontSize : "16px",
         width : 600,
         height : 400,
-        radius : 6,
+        radius : 8,
         line : {width:0.5, color:"rgba(0,0,0,1)" },
         inputs : {color:"rgba(0,127,0,0.6)", labels:["Open", "High", "Low", "Close"] },
         hidden : {color:"rgba(255,127,80,0.6)"},

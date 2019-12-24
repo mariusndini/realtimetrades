@@ -8,7 +8,7 @@ var world = {};
 function trainRunner(){
     train.run()
     .then((id)=>{
-        console.log( "done - " + id );
+        console.log( "done - index - " + id );
         world.id = id;
         return guess.run(id);
 
@@ -16,9 +16,8 @@ function trainRunner(){
         return trainRunner();
     
     }).catch((err)=>{
-        //console.log("ERR: " + err);
         wait(1000);
-        console.log("waiting");
+        console.log("waiting -" + err);
         return trainRunner();
     });    
 }
@@ -31,7 +30,7 @@ function wait(ms){
     while(end < start + ms) {
       end = new Date().getTime();
    }
- }
+}
 
 
 
