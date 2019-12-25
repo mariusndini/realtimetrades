@@ -8,12 +8,14 @@ var norm = 7800.0;
 
 var dbConn;
 var world = {};
+var returndata = {};
 
 module.exports = {
     run: function(){
         return snowflake.connect()
         .then((dbConnection)=>{
             dbConn = dbConnection;
+            returndata.start = new Date();
             return dbConn;
 
         }).then((con)=>{
@@ -35,9 +37,13 @@ module.exports = {
 
         }).then((trainOps)=>{
             world.id = trainOps[0].ID;
+            world.trainops = trainOps;
 
             var data = world.trainData;
             norm = trainOps[0].OPS.norm;
+
+            returndata.email = trainOps[0].OPS.email;
+            returndata.identifier = trainOps[0].OPS.identifier;
 
             var normalize = function ( step ){
                 var n = data[0].LOW;
@@ -77,12 +83,12 @@ module.exports = {
                         
             return snowflake.runSQL(dbConn, SQL);
 
-
         }).then((dbres)=>{
-            console.log('-- TRAIN -- ');
             console.log(dbres);
             console.log('Saved --> SNFLK');
-            return(world.id);
+            returndata.end = new Date();
+            returndata.id = world.id;
+            return( returndata );
         })
     }
 }
