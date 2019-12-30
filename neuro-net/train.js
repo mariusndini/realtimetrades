@@ -94,12 +94,6 @@ module.exports = {
 }
 
 function trainModel(trainingData, ops){
-    console.log(ops);
-
-    const net = new brain.recurrent.LSTMTimeStep( { inputSize:4, hiddenLayers: ops.hiddenLayers, outputSize: 4} )
-    var res = {};
-    //Training data set
-    var training = trainingData;
     /*
     var trainOptions = {
         // Defaults values --> expected validation
@@ -114,6 +108,13 @@ function trainModel(trainingData, ops){
         timeout: Infinity, // the max number of milliseconds to train for --> number greater than 0
     };
     */
+    console.log(ops);
+
+    const net = new brain.recurrent.LSTMTimeStep( { inputSize:4, hiddenLayers: ops.hiddenLayers, outputSize: 4, timeout: 300000} )
+    var res = {};
+    //Training data set
+    var training = trainingData;
+
 
     var trainErr = [];
     var trainOps = ops;

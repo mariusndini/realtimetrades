@@ -1,5 +1,5 @@
-# Real Time Trades (Bitcoin - USD pair)
-This demo collects real time Bitcoin-USD pair trades from Binance API (https://github.com/binance-exchange/binance-official-api-docs/blob/master/web-socket-streams.md#trade-streams). The stream is publically available to anyone interested through a HTTP web-socket. 
+# Data Stream (Bitcoin - USD pair)
+This demo collects Bitcoin-USD pair trades from Binance API as they occur in real time(https://github.com/binance-exchange/binance-official-api-docs/blob/master/web-socket-streams.md#trade-streams). The stream is publically available to anyone interested through a HTTP web-socket & documentation provided. 
 
 This demo consists of the following pieces 
 
@@ -103,12 +103,27 @@ Each candle stick represents a particular time frames (minute, hour, day etc) wo
 
 More information (https://en.wikipedia.org/wiki/Candlestick_chart)
 
+# Dashboard
+The dashboard demo presents data manipulated and aggregated in various different ways to get specific report in any given point in time. The Dashboard is driven by HTTP requests and APIs utilizing Snowflake as a backend database. High level diagram shows three main components to the web application. 
+![img](https://github.com/mariusndini/img/blob/master/webappapi.png)
+
+1) The front end application dynamically creates SQL quiries for specific reports. 
+
+2) The SQL quiry utilizes an HTTP Post request to AWS API Gateway which will pass query to a Lambda Function.
+
+3) The Lambda function is connected through node.js driver to Snowflake and passes SQL query to Snowflake to run.
+
+4) Once Snowflake runs said query it is returned through Lambda --> API Gateway --> Front end application for presentation.
+
+
+
+
 
 # Making Decisions
 Making decisions off of this data set could be potentially profitable
 ```
 Will be algo, 100%
-will be profitable? Hard to say
+will be profitable? Doubt it
 ```
 
 ## Algo (Training LSTM model)
@@ -118,7 +133,7 @@ As this demo is 100% javascript & node.js we will use brain.js (user friendly ov
 
 
 # Snowflake Data for Training
-within the <b>neuro-net</B> folder is the code for <b>train.js</b>, which is where the model training happens. After a model is trained it will kick off <b>guess.js</b> logic to guess the next days trade values.
+within the <b>neuro-net</B> folder is the code for <b>train.js</b>, for model training. After a model is trained it will kick off <b>guess.js</b> to attempt a guess for the next days trade values.
 
 ## Training Data Set from Snowflake
 Data can now be used to train a model to later be used for predictions. The flow diagram of what is happening in the Node.js code is below.
