@@ -181,8 +181,8 @@ In the above we have covered all the physical layers which put this demo togethe
 Below is a diagram of the tables and views which support all of the above logic. There is also a share account which you can log into to view this information provided and query it on as needed basis.
 ```
 https://hs62187.snowflakecomputing.com/console
-Username: Traders
-Password: Red123!!!
+Username: <Uname>
+Password: <PW> 
 ```
 
 ![img](https://github.com/mariusndini/img/blob/master/btcmodelapp.png)

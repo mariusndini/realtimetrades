@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html>
+  <head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+	<meta http-equiv="X-UA-Compatible" content="chrome=1,IE=edge" />
+	<title>index</title>
+	<style>
+		html {
+			height:100%;
+		}
+		body {
+			background-color:#FFFFFF;
+			margin:0;
+			height:100%;
+		}
+	</style>
+	<!-- copy these lines to your document head: -->
+
+	<meta name="viewport" content="user-scalable=yes, width=1024" />
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
+	 <script type="text/javascript" src="index.hyperesources/jquery.sparkline.min.js"></script>
+	 <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<!-- https://material.io/resources/icons/?icon=post_add&style=baseline -- here so I dont forget location for icons-->
+
+
+<script>
+var world = {}
+world.timeframe = 'minutes';
+        
+function runSQL(sql, CB){
+  //' select * from models;  ' 
+  var body = JSON.stringify({body: {select: sql}})
+    var settings = {
+      "async": true,
+      "crossDomain": true,
+      "url": "https://jxuhuns13j.execute-api.us-east-1.amazonaws.com/dev/select",
+      "method": "POST",
+      "headers": {
+        "Accept": "*/*",
+      },
+      "data" : body
+    }
+    
+    
+    $.ajax(settings).done(function (response) {
+      CB(response);
+    })
+
+}// end run SQL
+  
+      
+      
+      
+function createModelsPane(){
+	var sql = ' select m.date, m.log, t.ops, t.id, t.train '+
+			  ' from models m right join trainOps t on hash(t.ops) = hash(m.ops) '+
+			  ' order by t.id desc limit 52';
+
+	runSQL( sql , function (resp){
+		console.log(resp);
+	
+	    var modellist = 'model-list-0';
+	    for(i=0; i < resp.body.length; i++){
+	      if(i % 4 == 0){
+	        modellist = 'model-list-'+ (i+1) ;
+	        HYPE.documents["index"].getElementById('dataObject');
+	
+	        $('#modelBody').append('<div class="row" style="margin-top:20px" id="' + modellist + '">');
+	      }
+	      
+	          
+		  var clone = $(HYPE.documents["index"].getElementById('obj')).clone().css('position', '');
+		  
+		  var data = resp.body[i];
+		  clone.find('.header').html( data.OPS.identifier.split('__')[0] );
+		  clone.find('.date').html( data.DATE );
+		  clone.find('.idmodel').html( data.ID );
+		  clone.find('.opsErrThresh').html( data.OPS.errorThresh );
+		  clone.find('.opslearningRate').html( data.OPS.learningRate );
+		  clone.find('.opsiterations').html( data.OPS.iterations );
+		  clone.find('.opserrorrate').attr('id', 'sparkline' + i);
+
+		  var hl = '';
+		  for (q = 0; q < data.OPS.hiddenLayers.length; q++){
+		      hl = hl + ' ' + data.OPS.hiddenLayers[q] ;
+		  	
+		  }
+		  
+		  clone.find('.opshiddenlayers').html( hl );
+		  
+		  var log = data.LOG;
+		  var rates = [];
+		  
+		  if(log != null){
+			  for(q = 0; q < log.length; q++){
+			      rates.push(parseFloat(log[q].err));
+			  }
+			  
+			  if(rates.length > 10){
+			      rates.shift();rates.shift();rates.shift();rates.shift();rates.shift();rates.shift();rates.shift();rates.shift();rates.shift();
+			  }
+			  
+			  clone.append( '<script> '+
+				  '$("#sparkline' + i + '").sparkline('+JSON.stringify(rates)+', { '+
+				  '  type: "line", '+
+				  '  width: "100%", '+
+				  '  fillColor: "#fff", '+
+				  '  lineColor: "#fff", '+
+				  '  height: "50px", '+
+				  '  drawNormalOnTop: false}); '
+		    	);
+		   }
+
+    
+    	  clone.click({id: data.OPS.identifier, ops: data.OPS, log: rates }, function(event){
+		      goToCharts(event.data.id, event.data.ops, event.data.log);
+    	  });
+    	  
+		  function goToCharts (id, ops, log){
+		  		 world.chartid = id;	 
+		  		 world.ops = JSON.stringify(ops, null, 4);
+		  		 world.log = log;
+		  	    HYPE.documents["index"].showSceneNamed('modelExp')
+		  }
+		  
+		  $('#' + modellist).append('<div id="object-' + i + '" class="col-md-3"> </div>')
+		  $('#object-' + i).append(clone);
+	
+	    }
+	    
+  
+	});
+}//end create models pane
+
+function getguessedPrices(){
+
+	var sql = ' select date_trunc("minutes", to_timestamp_ntz((f.value:t/1000)::INTEGER)) as time,f.value:open as OPEN,f.value:high AS HIGH,f.value:close AS CLOSE,f.value:low AS LOW '+
+			  '	from guesses g join models m on g.model = m.model '+
+			  ' ,lateral flatten(input => g.output) f '+
+			  '	where OPS:identifier = \''+world.chartid+'\' '+
+			  '	order by time desc ';
+			  
+	runSQL( sql , function (resp){
+		var data = resp.body;
+		console.log(data);
+		
+		var x=[], close=[], high=[], low=[], open=[];
+		world.startGuess = data[0].TIME;
+		world.endGuess = data[data.length-1].TIME;
+
+		var logTable = '<table class="table table-condensed"><tr> <th>Time</th> <th>Open</th> <th>High</th> <th>Close</th> <th>Low</th> </tr>';
+
+		for(i = data.length-1; i >= 0; i--){
+			logTable += '<tr><td>'+data[i].TIME.split(' ')[1].split('.')[0]+'</td> <td>'
+			+data[i].OPEN.toFixed(2)+'</td> <td>'+data[i].HIGH.toFixed(2)
+			+'</td> <td>'+data[i].CLOSE.toFixed(2)+'</td> <td>'+data[i].LOW.toFixed(2)+'</td> </tr>';
+			
+			x.push(data[i].TIME.split(' ')[1].split('.')[0]);
+			close.push(data[i].CLOSE);
+			high.push(data[i].HIGH);
+			low.push(data[i].LOW);
+			open.push(data[i].OPEN);
+		}
+
+		$('#pricesraw').html(logTable + "</table");
+
+		getGuessedTimePrices(); //begin Getting the actuals for the time we are getting GUESSED data for
+		
+		drawCandleStick('guessedPrices', x, close, high, low, open, 'Model Guessed BTC-USDT Prices');
+
+	});
+
+}
+
+
+function getGuessedTimePrices(){
+
+	var sql = ' select TIME, OPEN, HIGH, LOW, CLOSE '+
+			  '	from EXCHANGE.PUBLIC.BTC_CANDLE_MINUTES '+
+			  ' where time >= \''+world.endGuess+'\' and time <= \''+world.startGuess+'\' '+
+			  '	order by time desc ;';
+	
+			  
+	runSQL( sql , function (resp){
+		var data = resp.body;
+		var x=[], close=[], high=[], low=[], open=[];
+
+		for(i = data.length-1; i >= 0; i--){
+			
+			x.push(data[i].TIME.split(' ')[1].split('.')[0]);
+			close.push(data[i].CLOSE);
+			high.push(data[i].HIGH);
+			low.push(data[i].LOW);
+			open.push(data[i].OPEN);
+		}
+				
+		drawCandleStick('actualForTime', x, close, high, low, open, 'BTC-USDT between '+world.endGuess +' - '+world.startGuess);
+
+	});
+
+}
+
+
+function getModelDrawing(){
+	var sql = ' select svg, m.model from guesses g join models m on g.model = m.model where OPS:identifier like \''+world.chartid+'\';';
+			  
+	runSQL( sql , function (resp){
+		console.log(resp);
+		$('#modelSVG').html( resp.body[0].SVG );
+		$('#modelraw').html( JSON.stringify(resp.body[0].MODEL, null, 4) );
+		
+	});
+
+}
+
+
+
+function drawCandleStick(div, x, close, high, low, open, title){
+	var trace1 = {
+	  x: x,
+	  
+	  close: close,
+	  high: high,
+	  low: low,
+	  open: open, 
+	  
+	  decreasing: {line: {color: '#7F7F7F'}}, 
+	  increasing: {line: {color: '#17BECF'}}, 
+	  line: {color: 'rgba(31,119,180,1)'}, 
+	
+	  type: 'candlestick', 
+	  xaxis: 'x', 
+	  yaxis: 'y'
+	};
+	
+	var data = [trace1];
+	
+	var layout = {
+	  dragmode: 'zoom', 
+	  margin: {
+	    r: 10, 
+	    t: 25, 
+	    b: 40, 
+	    l: 60
+	  }, 
+	  showlegend: false, 
+	  title: { text: title, xref: 'paper'},
+	  yaxis: {
+	    autorange: true, 
+	    domain: [0, 1], 
+	    type: 'linear'
+	  }
+	};
+	
+	Plotly.plot(div, data, layout);
+
+}
+
+
+
+function submitNewModel(){
+
+	var sql = ' insert into trainOps (date, id, ops, train) '+
+				' select current_timestamp, '+
+				' trainid.nextval,'+
+				' PARSE_JSON(\'{'+
+				'    learningRate: ' + ($('#learnRate').val() /100) + ' ,'+
+				'    errorThresh: '+ $('#errorThresh').val() / 100 +','+
+				'    iterations: '+ $('#iterations').val() +','+
+				'    logPeriod: 10,'+
+				'    email: "' + $('#email').val() + '",'+
+				'    hiddenLayers:['+ $('#hiddenLayers').val() +'],'+
+				'    norm: 7800,'+
+				'    identifier: "'+ $('#uniqueID').val() +'__'+ Math.floor(Math.random() * 1000000000) +'" '+
+			   ' }\'), true';
+	
+	console.log(sql);
+	
+	runSQL( sql , function (resp){
+		HYPE.documents["index"].showSceneNamed('models')
+	});
+
+}
+
+
+
+
+</script>
+
+
+	
+<script type="text/javascript" src="index.hyperesources/dashboard.js"></script>
+
+	<!-- end copy -->
+  </head>
+  <body>
+	<!-- copy these lines to your document: -->
+
+	<div id="index_hype_container" style="margin:auto;position:relative;width:100%;height:3000px;overflow:hidden;">
+		<script type="text/javascript" charset="utf-8" src="index.hyperesources/index_hype_generated_script.js?75753"></script>
+	</div>
+
+	<!-- end copy -->
+	
+
+
+	<!-- text content for search engines: -->
+
+	<div style="display:none" aria-hidden=true>
+
+		<div>12</div>
+		<div>hiddenLayers</div>
+		<div></div>
+		<div>8,5,6</div>
+		<div>2019-12-09 11:17:33.331</div>
+		<div>iterations</div>
+		<div>Models
+</div>
+		<div>logCount
+</div>
+		<div>1</div>
+		<div>learningRate</div>
+		<div>errorThresh</div>
+		<div>Train New Model</div>
+		<div></div>
+		<div>2019-12-09 11:17:33.331 -0800</div>
+		<div>errorRate</div>
+		<div>dashboard</div>
+		<div>post_add</div>
+		<div>Dashboard</div>
+		<div>Learning Rate</div>
+		<div>Model
+</div>
+		<div>Unique ID</div>
+		<div>Email</div>
+		<div>errorThresh</div>
+		<div>iterations</div>
+		<div>New Model
+</div>
+		<div>Train Model</div>
+		<div>device_hub</div>
+		<div>hiddenLayers</div>
+		<div></div>
+		<div></div>
+		<div>Model Diagram w/ Options
+</div>
+		<div></div>
+		<div></div>
+		<div>Error Rate
+</div>
+		<div></div>
+		<div>Model Guesses w/ Model Description
+</div>
+		<div></div>
+		<div>Model Overview
+</div>
+		<div>0</div>
+		<div>Querying Snowflake</div>
+		<div>code</div>
+		<div>00:00
+</div>
+		<div>24hr btcVol</div>
+		<div>Stream as of
+</div>
+		<div>unitVol
+</div>
+		<div>$</div>
+		<div>24hr High
+</div>
+		<div>All information below is from Snowflake. Trades were streamed in and are being aggregated for the numbers below.
+Below are statistics and views of trades we are expected to see to gain high level insights relative to price.
+</div>
+		<div>Hourly Candlestick</div>
+		<div>$Avg</div>
+		<div>{}</div>
+		<div>24hr Trades</div>
+		<div>A candlestick chart is a financial chart used to describe price movements of BTC-USDT pair for a given time frame.
+Each candlestick below has one hours worth of price movement for the past week.
+</div>
+		<div>Minute Candlestick</div>
+		<div>code</div>
+		<div>Each candlestick below has one minute worth of price movement for the past 24 hours.
+</div>
+		<div>code</div>
+		<div>$Vol</div>
+		<div>
+PairTimePriceQty$$$
+</div>
+		<div>code</div>
+		<div></div>
+		<div></div>
+		<div>code</div>
+		<div></div>
+		<div>24hr $Vol
+</div>
+		<div>24hr Low
+</div>
+		<div>code</div>
+		<div></div>
+		<div>Trade(s)
+</div>
+		<div>Live Stream from Trading Platform</div>
+		<div>code</div>
+		<div>Below information is direct from trading platform as trades happen in real time.
+Web Socket is provided for streaming data set. 
+This same data is taking and streaming to Snowflake via AWS Kinesis & Snowpipe.
+</div>
+
+	</div>
+
+	<!-- end text content: -->
+
+  </body>
+</html>
