@@ -9,7 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "aws-sdk": "^2.574.0",
+    "aws-sdk": "^2.814.0",
     "brain.js": "^2.0.0-alpha.9",
     "nodemailer": "^6.4.2",
     "save-svg-as-png": "^1.4.14",
